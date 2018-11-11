@@ -1,4 +1,5 @@
-limiteR = 1000000;
+alpha = 0.5;
+limiteR = 100;
 tamanio_gauss = 5;
 k=0.05;
 
@@ -35,9 +36,8 @@ for x=1:filas,
        H = [Sx2(x, y) Sxy(x, y); Sxy(x, y) Sy2(x, y)];
        
        % 5) A partir de M calculamos R
-       % det(H) = lambda1*lambda2
-       % trace(H) = lambda1+lambda2
-       R = det(H) - k * (trace(H) ^ 2);
+       eigvalues = eig(H);
+       R = (eigvalues(1) - alpha * eigvalues(2));
        
        % 6) Verificamos si R supera el limite
        if (R > limiteR)
