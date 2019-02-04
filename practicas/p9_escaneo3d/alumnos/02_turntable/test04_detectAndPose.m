@@ -1,32 +1,42 @@
 %% Load intrinsic params and image list
 
+set_paths;
+
 load(calib_resuls_filename,'KK', 'kc')
 
-imageFileNames = dir(fullfile(images_path,'*.png'));
-imageFileNames = fullfile({imageFileNames.folder}, {imageFileNames.name});
+imageDirectory = dir(fullfile(turntable_images_path,'*.png'));
+
+imageFileNames = fullfile({imageDirectory.folder}, {imageDirectory.name});
+
 fprintf('%d images to process\n',length(imageFileNames));
 
 %% Detect checkerboards in images
-
+        
 % Generate world coordinates of the corners of the squares
-squareSize = 8.7; % small checkerboard is 8 x 10 (rows x cols) with 8.7 mm square size
+%squareSize = 8.7; % small checkerboard is 8 x 10 (rows x cols) with 8.7 mm square size
 %squareSize = 14.9; % big checkerboard is 8 x 10 with 14.9 mm square size
 
-[imagePoints, boardSize, imagesUsed] = detectCheckerboardPoints(imageFileNames);
+%[imagePoints, boardSize, imagesUsed] = detectCheckerboardPoints(imageFileNames);
 
-fprintf('%d of %d images detected\n',sum(imagesUsed),length(imageFileNames));
+%fprintf('%d of %d images detected\n',sum(imagesUsed),length(imageFileNames));
 
-assert(length(imageFileNames)==sum(imagesUsed));
+%fprintf('%d |',length(imageFileNames));
+%fprintf('%d |',sum(imagesUsed));
+
+
+%assert(length(imageFileNames)==sum(imagesUsed));
+
+
 %
-worldPoints = generateCheckerboardPoints(boardSize, squareSize);
+%worldPoints = generateCheckerboardPoints(boardSize, squareSize);
 
-N = length(imageFileNames);
-iPt = cell(N,1);
-wPt = cell(N,1);
-for i = 1:N
-    iPt{i} = imagePoints(:,:,i);
-    wPt{i} = worldPoints(:,[2 1]);
-end
+%N = length(imageFileNames);
+%iPt = cell(N,1);
+%wPt = cell(N,1);
+%for i = 1:N
+%    iPt{i} = imagePoints(:,:,i);
+%    wPt{i} = worldPoints(:,[2 1]);
+%end
 
 %% Detect CALTag patterns
 % https://www.cs.ubc.ca/labs/imager/tr/2010/Atcheson_VMV2010_CALTag/
@@ -81,4 +91,4 @@ for i = 1:N
     Tt{i} = T;
 end
 
-save([images_path '/ChessboardCorners.mat'],'iPt','wPt','Rt','Tt');
+save([turntable_images_path '/ChessboardCorners.mat'],'iPt','wPt','Rt','Tt');
