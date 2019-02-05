@@ -29,11 +29,12 @@ DATA_DIR = os.path.join('e:', 'Facultad', 'vc')
 
 def preprocess_features(x):
     # Rescale images
-    x = x / 255.0
+    #x = x / 255.0
     # Sample-wise centering
-    x -= np.mean(x, axis=0, keepdims=True)
+    #x -= np.mean(x, axis=0, keepdims=True)
     # Sample-wise std normalization
-    x /= (np.std(x, axis=0, keepdims=True) + 1e-7)    
+    #x /= (np.std(x, axis=0, keepdims=True) + 1e-7)    
+    x = (x - 127.5) / 127.5
     return x
 
 def preprocess_labels(y):
@@ -112,7 +113,7 @@ def homography_regression_model():
     
     model = Model(inputs=input_img, outputs=[out])
     
-    model.compile(optimizer=SGD(lr=0.005, momentum=0.9),
+    model.compile(optimizer=SGD(lr=0.001, momentum=0.9),
                   loss=euclidean_l2_loss,
                   metrics=['mse', mace])
 
@@ -120,8 +121,8 @@ def homography_regression_model():
 
 
 def train(model):
-    batch_size = 16
-    total_iterations = 90000
+    batch_size = 8
+    total_iterations = 90000 * 2
     
     # FIXME
     n_total = len(glob(os.path.join(DATA_DIR, 'test2017', '*.jpg')))
@@ -153,4 +154,8 @@ def train(model):
 
 if __name__ == "__main__":
     model = homography_regression_model()
+
+    if os.path.exists('checkpoint.h5'):
+        model.load_weights('checkpoint.h5')
+
     train(model)
