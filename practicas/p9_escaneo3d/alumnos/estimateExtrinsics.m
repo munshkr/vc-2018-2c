@@ -28,11 +28,9 @@ n = size(us,1)
 % Armamos uMoño
 uMonio=[];
 for i = 1:n
-    uMonio = [uMonio; transpose(inv(K)*transpose(u(i)))];
+    uMonio = [uMonio; transpose(inv(K)*transpose(u(i,:)))];
 end
 
-
-uMonio
 % A es de 2nx9
 A = [];
 for i = 1:n
@@ -48,7 +46,9 @@ end
 % O sea, queremos el ultimo vector de la base ortonormal que nos da SVD
 [U,Sigma,Vt] = svd(A);
     
-XSombrerito = Vt(:,end); % El ultimo vector de la base ortonormal de V
+XSombrerito = -1*Vt(:,end); % El ultimo vector de la base ortonormal de V
+
+X = XSombrerito;
 
 %XSombrerito = transpose([r11,r21,r31, r12, r22, r32, Tx, Ty, Tz])
 % Ya teniendo XSombrerito, definimos Rsombrerito
@@ -56,16 +56,17 @@ XSombrerito = Vt(:,end); % El ultimo vector de la base ortonormal de V
 % TODO: Preguntar, en RSombrerito hay un error en el curso? Lo define como [r21,
 % r22, r23], pero en X no estan esos valores
 
-RSombrerito = [XSombrerito(1), XSombrerito(2), XSombrerito(3);
-               XSombrerito(4), XSombrerito(5), XSombrerito(6)];
+RSombrerito = transpose([XSombrerito(1), XSombrerito(2), XSombrerito(3);
+               XSombrerito(4), XSombrerito(5), XSombrerito(6)]);
            
-TSombrerito = [XSombrerito(7),XSombrerito(8),XSombrerito(9)]; 
+TSombrerito = transpose([XSombrerito(7),XSombrerito(8),XSombrerito(9)]); 
 
-s = 2 / (norm(RSombrerito(1))+norm(RSombrerito(2)));
+s = 2 / (norm(RSombrerito(:,1))+norm(RSombrerito(:,2)));
+
 
 % Calculamos R a partir de S y RSombrerito
-R1 = s*RSombrerito(1,:);
-R3 = cross(R1, s * RSombrerito(2,:));
+R1 = s*RSombrerito(:,1);
+R3 = cross(R1, s * RSombrerito(:,2));
 R2 = cross(R3, R1);
            
 

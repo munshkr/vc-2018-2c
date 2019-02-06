@@ -41,7 +41,6 @@ fprintf('%d images to process\n',length(imageFileNames));
 %% Detect CALTag patterns
 % https://www.cs.ubc.ca/labs/imager/tr/2010/Atcheson_VMV2010_CALTag/
 %!git clone https://github.com/brada/caltag
-caltag_path = [pwd '/caltag'];
 addpath(caltag_path);
 
 cd([caltag_path '/GeneratePattern']);

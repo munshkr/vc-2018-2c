@@ -1,4 +1,6 @@
 %%
+set_paths;
+
 load([turntable_images_path '/ChessboardCorners.mat'],'Rt', 'Tt');
 
 %%
@@ -7,8 +9,9 @@ angs = zeros(N,1);
 angs_raw = zeros(N,1);
 diff_angs = zeros(N-1,1);
 
-for i = 1:N
+N
 
+for i = 1:N
     R = Rt{i};
     T = Tt{i};
     

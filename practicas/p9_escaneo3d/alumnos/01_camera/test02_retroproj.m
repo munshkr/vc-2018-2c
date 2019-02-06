@@ -1,8 +1,6 @@
 %% Load calibration from file
 
-calib_resuls_filename = '~/facultad/vision/vc-2018-2c/practicas/p9_escaneo3d/imagenes/laser-plane/gray/Calib_Results.mat';
-
-
+set_paths;
 
 % intrinsic parameteres
 KK = struct2array(load(calib_resuls_filename,'KK'));
