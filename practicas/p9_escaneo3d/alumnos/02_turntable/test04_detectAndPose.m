@@ -55,7 +55,7 @@ for i=1:length(imageFileNames)
     I = imread(imageFileNames{i});
     fprintf('%s\n',imageFileNames{i});
     [ps,us] = caltag(I, [caltag_path '/GeneratePattern/output.mat'], false );
-    wPt{i} = ps(:,[2 1]);
+    wPt{i} = ps(:,[2 1])*25;
     iPt{i} = us(:,[2 1]);
 end
 

@@ -1,7 +1,11 @@
 %%
 %load([turntable_images_path '/ChessboardCorners.mat'],'Rt', 'Tt');
 %load('/Users/pachi/workspace/posdoc/3DP2018/data/ChessboardCorners.mat','R', 'T');
-load('/Users/pachi/workspace/posdoc/3DP2018/data/ChessboardCorners.mat');
+%load('/Users/pachi/workspace/posdoc/3DP2018/data/ChessboardCorners.mat');
+
+set_paths;
+load([turntable_images_path '/ChessboardCorners.mat'],'iPt','wPt','Rt','Tt');
+
 %Rt = R; Tt = T; clear R T;
 load(calib_resuls_filename,'KK', 'kc')
 %%

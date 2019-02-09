@@ -45,8 +45,15 @@ end
 % varianza de los datos
 % O sea, queremos el ultimo vector de la base ortonormal que nos da SVD
 [U,Sigma,Vt] = svd(A);
-    
-XSombrerito = -1*Vt(:,end); % El ultimo vector de la base ortonormal de V
+
+
+XSombrerito = Vt(:,end); % El ultimo vector de la base ortonormal de V
+
+if XSombrerito(end) < 0
+    XSombrerito = -1*XSombrerito;
+end
+
+
 
 X = XSombrerito;
 
