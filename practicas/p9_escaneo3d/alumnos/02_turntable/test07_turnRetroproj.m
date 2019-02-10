@@ -1,6 +1,7 @@
+set_paths;
 %%
-load([images_path '/ChessboardCorners.mat'],'Rt','Tt','iPt','wPt');
-load([images_path '/CameraPose.mat'],'worldRotation', 'worldTranslation');
+load([turntable_images_path '/ChessboardCorners.mat'],'Rt','Tt','iPt','wPt');
+load([turntable_images_path '/CameraPose.mat'],'worldRotation', 'worldTranslation');
 load(calib_resuls_filename,'KK', 'kc')
 
 %% retroprojection
@@ -17,7 +18,7 @@ for i=1:N
 
     ps = [ps'; zeros(1,length(ps))];
         
-    %pw = worldRotation * ps + worldTranslation;
+    pw = worldRotation * ps + worldTranslation;
     
     pc = R * ps + T;
     

@@ -11,9 +11,9 @@ turntable_images_path = strcat(path_practica,'imagenes/turntable-small/gray');
 calib_images_path = strcat(path_practica,'imagenes/laser-plane/gray');
 caltag_path = strcat(path_practica,'comun/caltag');
 calib_resuls_filename = strcat(path_practica,'imagenes/laser-plane/gray/Calib_Results.mat');
+laser_color_images_path = strcat(path_practica,'imagenes/laser-plane/color');
 
 scanned_object_images_path = 'imagenes/turntable-small/color';
-laser_color_images_path = 'imagenes/laser-plane/color';
 %% add more
 
 
