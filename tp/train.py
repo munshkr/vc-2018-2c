@@ -128,7 +128,7 @@ def train(model):
     
     # FIXME
     n_total = len(glob(os.path.join(DATA_DIR, 'test2017', '*.jpg')))
-    n_val = round(n_total * 0.05)
+    n_val = round(n_total * 0.2)
     n_train = n_total - n_val
 
     steps_per_epoch = n_train // batch_size
