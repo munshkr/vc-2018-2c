@@ -122,11 +122,10 @@ def generate_dataset_archives(dirname, X_train, X_val):
                         img = plt.imread(img_path)
                         try:
                             x, y = process_image(img)
+                            xs.append(x)
+                            ys.append(y)
                         except:
                             print("Image broken? {}".format(img_path))
-                            raise
-                        xs.append(x)
-                        ys.append(y)
 
             xs = np.array(xs, dtype=np.uint8)
             ys = np.array(ys, dtype=np.int8)
