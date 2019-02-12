@@ -119,7 +119,7 @@ def homography_regression_model():
     return model
 
 
-def train(model):
+def train(model, initial_epoch=None):
     batch_size = 16
 
     iterations_per_stage = 50000
@@ -159,6 +159,7 @@ def train(model):
 
     # Fit!
     model.fit_generator(train_generator,
+        initial_epoch=initial_epoch,
         steps_per_epoch=steps_per_epoch,
         epochs=epochs,
         validation_data=val_generator,
@@ -167,9 +168,18 @@ def train(model):
 
 
 if __name__ == "__main__":
+    import sys
+
+
     model = homography_regression_model()
 
-    #if os.path.exists('checkpoint.h5'):
-    #    model.load_weights('checkpoint.h5')
+    # For resuming a training job...
+    if os.path.exists('checkpoint.h5'):
+        model.load_weights('checkpoint.h5')
 
-    train(model)
+    initial_epoch = None
+    if len(sys.argv) >= 2:
+        initial_epoch = int(sys.argv[1])
+        print("Resuming from batch:", initial_epoch)
+
+    train(model, initial_epoch=initial_epoch - 1)
