@@ -1,4 +1,5 @@
 %% Load data from disk
+set_paths;
 
 load([laser_color_images_path '/../LaserPlane_Results.mat'],'laserPlane','LPts');
 

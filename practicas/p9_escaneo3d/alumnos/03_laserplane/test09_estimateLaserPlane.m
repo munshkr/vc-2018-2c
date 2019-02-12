@@ -15,9 +15,10 @@ pointcloud = cell(n_ima,1);
 for i=1:n_ima
     %%
     I = imread(imageFileNames{i});
-    
+    clear mask;
+    close all;
     % detect laser line
-    if ~exist('mask','var')
+    %if ~exist('mask','var')
     %
     [~,rect] = imcrop(I);
     title('Select Laser Plane ROI');
@@ -25,7 +26,7 @@ for i=1:n_ima
     rect = round(rect);
     mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = 1;
     figure; imagesc(mask); 
-    end
+    %end
     %
     [Lx,Ly] = detectLaser2(I,mask);
 
@@ -53,7 +54,7 @@ for i=1:n_ima
 
     pointcloud{i} = laserpoints;
 end
-
+%%
 %%%%%%%%%%%%%%%%%%%%%%
 % estimatePlane 
 [laserPlane,LPts] = estimateLaserPlane(pointcloud);
@@ -66,5 +67,3 @@ figure, hold on, grid on;
 view(230,30);
 xlabel('X'); ylabel('Y'); zlabel('Z');
 scatter3(LPts(1,:),LPts(2,:),LPts(3,:),'+');
-
-
