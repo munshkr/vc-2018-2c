@@ -23,8 +23,11 @@ for i=1:n_ima
     [~,rect] = imcrop(I);
     title('Select Laser Plane ROI');
     mask = zeros(size(I,1),size(I,2));
+    
+    %mask = ones(size(I,1),size(I,2)); % COMENTAR! Solo usar para debugging
     rect = round(rect);
     mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = 1;
+    
     figure; imagesc(mask); 
     %end
     %
