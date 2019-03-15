@@ -1,10 +1,11 @@
 %% Load calibration from file
 
+set_paths;
+
 load(fullfile(turntable_images_path,'CameraPose.mat'),'worldRotation','worldTranslation');
 load(calib_resuls_filename,'KK', 'kc')
-load([turntable_images_path '/TurntableCalib.mat'],'angs');
+load([turntable_images_path '/../TurntableCalib.mat'],'angs');
 load([laser_color_images_path '/../LaserPlane_Results.mat'],'laserPlane');
-
 %% Load images of the scanned object
 
 imageFileNames = dir(fullfile(scanned_object_images_path,'*.png'));
@@ -26,12 +27,14 @@ end
 pointcloud = cell(N,1);
 
 figure
+%for i = 1:10
 for i = 1:N
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % detect laser line
     I = imread(imageFileNames{i});
-    if ~exist('mask','var')
+    %if ~exist('mask','var')
+    if i == 1
     %%
     [~,rect] = imcrop(I);
     mask = zeros(size(I,1),size(I,2));
@@ -39,6 +42,8 @@ for i = 1:N
     mask(rect(2):rect(2)+rect(4),rect(1):rect(1)+rect(3)) = 1;
     figure, imagesc(mask)
     end
+    
+    
     [Lx,Ly] = detectLaser2(I,mask);
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
