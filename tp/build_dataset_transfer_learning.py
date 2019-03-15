@@ -1,14 +1,15 @@
+import gc
+import os
+import random
+import shutil
+import uuid
 from glob import glob
+from itertools import zip_longest
+
+import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 from numpy.linalg import inv
-import os
-import shutil
-import random
-import cv2
-import gc
-import matplotlib.pyplot as plt
-from itertools import zip_longest
-import uuid
 from PIL import Image
 
 WIDTH, HEIGHT = 320, 240
@@ -16,7 +17,7 @@ RHO = 32
 PATCH_SIZE = 128
 
 NUM_SAMPLES_PER_IMAGE = 10
-NUM_SAMPLES_PER_ARCHIVE = 10000
+NUM_SAMPLES_PER_ARCHIVE = 1000
 
 NUM_IMAGES_PER_ARCHIVE = NUM_SAMPLES_PER_ARCHIVE // NUM_SAMPLES_PER_IMAGE
 
@@ -100,7 +101,8 @@ def process_image(img, debug=False):
       # Stack patch images together
     x = np.dstack([a_img, b_img])
     
-    
+    # x should be a 6-channel image
+    assert(x.shape[2] == 6)
 
     # Subtract patches to get delta
     # int8 is good enough because RHO = 32, so, values are in [-32, 32] range
@@ -160,8 +162,11 @@ def generate_dataset_archives(dirname, X_train, X_val):
 DATA_DIR = os.path.join('')
 print(DATA_DIR)
 X = glob(os.path.join(DATA_DIR, 'test2017', '*.jpg'))
+print("Total", len(X))
 
-
+# Take a sample of 30000 images (we don't need too many images when doing transfer learning)
+np.random.shuffle(X)
+X = X[:10000]
 
 X_train, X_val = train_test_split(X, test_size=0.2)
 print(len(X_train), len(X_val))

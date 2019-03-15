@@ -1,28 +1,31 @@
+import gc
+import os
+import random
+import shutil
+import uuid
+from datetime import datetime
+from glob import glob
+from itertools import zip_longest
+from multiprocessing import Pool, cpu_count
+
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
-from tensorflow.keras.models import Sequential, Model
-from tensorflow.keras.layers import Dense, Flatten, Dropout, MaxPooling2D, Input, BatchNormalization,concatenate, Lambda
-from tensorflow.keras.layers import Convolution2D as Conv2D
-from tensorflow.keras.optimizers import SGD, Adam
-from tensorflow.keras.callbacks import ReduceLROnPlateau, ModelCheckpoint, LearningRateScheduler, TensorBoard
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import tensorflow.keras.backend as K
-from glob import glob
-import numpy as np
-import os
-import shutil
-import random
-import cv2
-import gc
-import matplotlib.pyplot as plt
-from itertools import zip_longest
-import uuid
-from multiprocessing import Pool, cpu_count
-from datetime import datetime
-from tensorflow.keras.optimizers import Adagrad
+from tensorflow.keras.backend import set_session
+from tensorflow.keras.callbacks import (LearningRateScheduler, ModelCheckpoint,
+                                        ReduceLROnPlateau, TensorBoard)
+from tensorflow.keras.layers import BatchNormalization
+from tensorflow.keras.layers import Convolution2D as Conv2D
+from tensorflow.keras.layers import (Dense, Dropout, Flatten, Input, Lambda,
+                                     MaxPooling2D, concatenate)
+from tensorflow.keras.models import Model, Sequential
+from tensorflow.keras.optimizers import SGD, Adagrad, Adam
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
 import mobilenet_v2
-
-
 
 WIDTH, HEIGHT = 320, 240
 RHO = 32
@@ -32,7 +35,6 @@ DATA_DIR = os.path.join('')
 
 
 """ session """
-from tensorflow.keras.backend import set_session
 config = tf.compat.v1.ConfigProto()
 config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
 #config.log_device_placement = True  # to log device placement (on which device the operation ran)
@@ -76,10 +78,10 @@ def build_data_generator(path, batch_size=64):
                 ys_batch = ys[i:end_i]
                 
                 # Preprocess features and labels
-                xs_batch = preprocess_features(xs_batch)
+                xs_batch = mobilenet_v2.preprocess_input(xs_batch)
                 ys_batch = preprocess_labels(ys_batch)
 
-                yield [xs_batch[:,:,:,0:3],xs_batch[:,:,:,3:6]], ys_batch
+                yield [xs_batch[:,:,:,0:3], xs_batch[:,:,:,3:6]], ys_batch
 
 def euclidean_l2_loss(y_true, y_pred):
     diff = K.reshape(y_true, (-1,4,2)) - K.reshape(y_pred, (-1,4,2))
@@ -90,51 +92,6 @@ def mace(y_true, y_pred):
     diff = K.reshape(y_true * RHO, (-1,4,2)) - K.reshape(y_pred * RHO, (-1,4,2))
     return K.mean(K.sqrt(K.sum(K.square(diff), axis=2)))  
 
-def homography_regression_model():
-    input_shape = (128, 128, 2)
-    filters = 64
-    kernel_size = (3, 3)
-    conv_strides = (1, 1)
-    
-    input_img = Input(shape=input_shape)
-     
-    x = Conv2D(filters, kernel_size, strides=conv_strides, padding='same', name='conv1', activation='relu')(input_img)
-    x = BatchNormalization()(x)
-    x = Conv2D(filters, kernel_size, strides=conv_strides, padding='same', name='conv2', activation='relu')(x)
-    x = BatchNormalization()(x)
-    x = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), name='pool1')(x)
-    
-    x = Conv2D(filters, kernel_size, strides=conv_strides, padding='same', name='conv3', activation='relu')(x)
-    x = BatchNormalization()(x)    
-    x = Conv2D(filters, kernel_size, strides=conv_strides, padding='same', name='conv4', activation='relu')(x)
-    x = BatchNormalization()(x)
-    x = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), name='pool2')(x)
-   
-    x = Conv2D(filters*2, kernel_size, strides=conv_strides, padding='same', name='conv5', activation='relu')(x)
-    x = BatchNormalization()(x)    
-    x = Conv2D(filters*2, kernel_size, strides=conv_strides, padding='same', name='conv6', activation='relu')(x)
-    x = BatchNormalization()(x)
-    x = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), name='pool3')(x)
-    
-    x = Conv2D(filters*2, kernel_size, strides=conv_strides, padding='same', name='conv7', activation='relu')(x)
-    x = BatchNormalization()(x)    
-    x = Conv2D(filters*2, kernel_size, strides=conv_strides, padding='same', name='conv8', activation='relu')(x)
-    x = BatchNormalization()(x)
-
-    x = Flatten()(x)
-    x = Dropout(0.5)(x)    
-    x = Dense(1024, name='fc1', activation='relu')(x)
-    x = Dropout(0.5)(x)
-    out = Dense(8, name='fc2', activation=None)(x)
-    
-    model = Model(inputs=input_img, outputs=[out])
-    
-    model.compile(optimizer=SGD(lr=0.005, momentum=0.9),
-                  loss=euclidean_l2_loss,
-                  metrics=['mse', mace])
-
-    return model
-
 
 def train(model, initial_epoch=None):
     batch_size = 16
@@ -144,7 +101,7 @@ def train(model, initial_epoch=None):
     total_iterations = iterations_per_stage * stages
     
     # FIXME
-    n_total = len(glob(os.path.join(DATA_DIR, 'test2017', '*.jpg')))
+    n_total = len(glob(os.path.join(DATA_DIR, 'datasetColor', '*', '*.jpg')))
     n_val = round(n_total * 0.2)
     n_train = n_total - n_val
     print(n_total)
@@ -224,12 +181,13 @@ def homography_regression_model_transfer_learning():
     
 
     ### we add dense layers + dropouts
-    x = Dense(8, name='fc2_2', activation=None)(merged)
+    x = Dense(1024, name='fc1', activation='relu')(merged)
     x = Dropout(0.5)(x)    
-    x = Dense(8, name='fc1_2', activation='relu')(x)
+    x = Dense(1024, name='fc2', activation='relu')(x)
     x = Dropout(0.5)(x)
+    out = Dense(8, name='fc3', activation=None)(x)
 
-    model = Model(inputs=[modelMobileNet1.input,modelMobileNet2.input], outputs=[x])
+    model = Model(inputs=[modelMobileNet1.input, modelMobileNet2.input], outputs=[out])
     
     model.compile(optimizer=SGD(lr=0.005, momentum=0.9),
                   loss=euclidean_l2_loss,
@@ -244,6 +202,5 @@ if __name__ == "__main__":
 
     print(model.summary())
 
-    print("------------- Training -------------")
-    train(model, initial_epoch=0)
-
+    #print("------------- Training -------------")
+    #train(model, initial_epoch=0)
