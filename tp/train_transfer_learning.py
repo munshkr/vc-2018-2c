@@ -87,7 +87,7 @@ def mace(y_true, y_pred):
 
 
 def train(model, initial_epoch=None):
-    batch_size = 1
+    batch_size = 32
 
     iterations_per_stage = 50000
     stages = 4
