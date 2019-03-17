@@ -95,9 +95,9 @@ def train(model, initial_epoch=None):
     total_iterations = iterations_per_stage * stages
 
     # FIXME
-    #_total = len(glob(os.path.join(DATA_DIR, 'test2017', '*.jpg')))
+    n_total = len(glob(os.path.join(DATA_DIR, 'test2017', '*.jpg')))
     #n_total = len(glob(os.path.join(DATA_DIR, 'dataset', '*', '*.jpg')))
-    n_total = 10000
+    #n_total = 10000
     n_val = round(n_total * 0.2)
     n_train = n_total - n_val
     print(n_total)
