@@ -20,7 +20,7 @@ from tensorflow.keras.callbacks import (LearningRateScheduler, ModelCheckpoint,
 from tensorflow.keras.layers import BatchNormalization
 from tensorflow.keras.layers import Convolution2D as Conv2D
 from tensorflow.keras.layers import (Dense, Dropout, Flatten, Input, Lambda,
-                                     MaxPooling2D, concatenate)
+                                     MaxPooling2D, Reshape, concatenate)
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.optimizers import SGD, Adagrad, Adam
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
@@ -147,14 +147,12 @@ def train(model, initial_epoch=None):
 
 def homography_regression_model_transfer_learning():
     input_shape = (128, 128, 3)
-    filters = 64
-    kernel_size = (3, 3)
-    conv_strides = (1, 1)
+
 
     ### ---------- mobilenet 1
     input_img1 = Input(shape=input_shape)
     mobileNet1 = mobilenet_v2.MobileNetV2(input_shape=input_shape, \
-                    alpha=1.0, include_top=False, weights="imagenet",layerNameSuffix="_1",\
+                    alpha=1.0, pooling='avg', include_top=False, weights="imagenet",layerNameSuffix="_1",\
                     backend = tf.keras.backend, layers = tf.keras.layers, models = tf.keras.models, utils = tf.keras.utils)
 
     out1 = Flatten()(mobileNet1.output)
@@ -166,7 +164,7 @@ def homography_regression_model_transfer_learning():
     ### ---------- mobilenet 2
     input_img2 = Input(shape=input_shape)
     mobileNet2 = mobilenet_v2.MobileNetV2(input_shape=input_shape, \
-                    alpha=1.0, include_top=False, weights="imagenet",layerNameSuffix="_2",\
+                    alpha=1.0, pooling='avg', include_top=False, weights="imagenet",layerNameSuffix="_2",\
                     backend = tf.keras.backend, layers = tf.keras.layers, models = tf.keras.models, utils = tf.keras.utils)
     out2 = Flatten()(mobileNet2.output)
     inp2 = mobileNet2.input
@@ -174,15 +172,14 @@ def homography_regression_model_transfer_learning():
     for layer in modelMobileNet2.layers:
         layer.trainable = False
 
-    ### merge
+    ### merge and reshape
     merged = concatenate([out1, out2])
+    merged = Reshape((out1.shape[1], 2))(merged)
 
     ### we add dense layers + dropouts
     x = Dense(1024, name='fc1', activation='relu')(merged)
     x = Dropout(0.5)(x)
-    x = Dense(1024, name='fc2', activation='relu')(x)
-    x = Dropout(0.5)(x)
-    out = Dense(8, name='fc3', activation=None)(x)
+    out = Dense(8, name='fc2', activation=None)(x)
 
     model = Model(
         inputs=[modelMobileNet1.input, modelMobileNet2.input], outputs=[out])
