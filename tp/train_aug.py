@@ -1,30 +1,34 @@
 #!/usr/bin/env python3
-from keras.models import Sequential, Model
-from keras.layers import Dense, Flatten, Dropout, MaxPooling2D, Input, BatchNormalization
-from keras.layers.convolutional import Conv2D
-from keras.optimizers import SGD, Adam
-from keras.callbacks import ReduceLROnPlateau, ModelCheckpoint, LearningRateScheduler, TensorBoard
-from keras.preprocessing.image import ImageDataGenerator
-import keras.backend as K
-from glob import glob
-import numpy as np
-import os
-import shutil
-import random
-import cv2
 import gc
-import matplotlib.pyplot as plt
-from itertools import zip_longest
+import os
+import random
+import shutil
 import uuid
-from multiprocessing import Pool, cpu_count
 from datetime import datetime
+from glob import glob
+from itertools import zip_longest
+from multiprocessing import Pool, cpu_count
 
+import numpy as np
 
+import cv2
+import keras.backend as K
+import matplotlib.pyplot as plt
+from imgaug import augmenters as iaa
+from keras.callbacks import (LearningRateScheduler, ModelCheckpoint,
+                             ReduceLROnPlateau, TensorBoard)
+from keras.layers import (BatchNormalization, Dense, Dropout, Flatten, Input,
+                          MaxPooling2D)
+from keras.layers.convolutional import Conv2D
+from keras.models import Model, Sequential
+from keras.optimizers import SGD, Adam
+from keras.preprocessing.image import ImageDataGenerator
 
 WIDTH, HEIGHT = 320, 240
 RHO = 32
 PATCH_SIZE = 128
 DATA_DIR = os.path.join('')
+
 
 
 def preprocess_features(x):
@@ -37,27 +41,49 @@ def preprocess_labels(y):
     y = y / RHO
     return y
 
-def build_data_generator(path, batch_size=64):
+def build_data_generator(path, augment=False, batch_size=64):
+    files = glob(os.path.join(path, '*.jpg'))
+    if not files:
+        return
+
+    if augment:
+        # TODO Add more options
+        seq = iaa.Sequential([
+            #iaa.Crop(px=(0, 16)), # crop images from each side by 0 to 16px (randomly chosen)
+            iaa.Fliplr(0.5), # horizontally flip 50% of the images
+            iaa.GaussianBlur(sigma=(0, 3.0)) # blur images with a sigma of 0 to 3.0
+        ])
+
+    xs, ys = [], []
     while True:
-        files = glob(os.path.join(path, '*.npz'))
         random.shuffle(files)
 
-        for npz in files:
-            archive = np.load(npz)
-            xs = archive['x']
-            ys = archive['y']
+        for img_path in files:
+            img = plt.imread(img_path)
+
+            if augment:
+                img = seq.augment_images([img])[0]
+
+            try:
+                x, y = process_image(img)
+            except:
+                print("Image broken? {}".format(img_path))
+                raise
+            xs.append(x)
+            ys.append(y)
 
             # Yield minibatches
-            for i in range(0, len(xs), batch_size):
-                end_i = min(i + batch_size, len(xs))
-                xs_batch = xs[i:end_i]
-                ys_batch = ys[i:end_i]
+            if len(xs) == batch_size:
+                xs = np.array(xs, dtype=np.uint8)
+                ys = np.array(ys, dtype=np.int8)
 
                 # Preprocess features and labels
-                xs_batch = preprocess_features(xs_batch)
-                ys_batch = preprocess_labels(ys_batch)
+                xs = preprocess_features(xs)
+                ys = preprocess_labels(ys)
 
-                yield xs_batch, ys_batch
+                yield xs, ys
+
+                xs, ys = [], []
 
 def euclidean_l2_loss(y_true, y_pred):
     diff = K.reshape(y_true, (-1,4,2)) - K.reshape(y_pred, (-1,4,2))
@@ -149,7 +175,7 @@ def train(model, initial_epoch=None):
     # Build data generators
     train_dir = os.path.join(DATA_DIR, 'dataset', 'train')
     val_dir = os.path.join(DATA_DIR, 'dataset', 'val')
-    train_generator = build_data_generator(train_dir, batch_size)
+    train_generator = build_data_generator(train_dir, batch_size=batch_size, augment=True)
     val_generator = build_data_generator(val_dir, batch_size)
 
     # Fit!
