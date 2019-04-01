@@ -24,6 +24,8 @@ from keras.models import Model, Sequential
 from keras.optimizers import SGD, Adam
 from keras.preprocessing.image import ImageDataGenerator
 
+from build_dataset import process_image
+
 WIDTH, HEIGHT = 320, 240
 RHO = 32
 PATCH_SIZE = 128
@@ -147,10 +149,9 @@ def train(model, initial_epoch=None):
     stages = 4
     total_iterations = iterations_per_stage * stages
 
-    # FIXME
-    n_total = len(glob(os.path.join(DATA_DIR, 'test2017', '*.jpg')))
-    n_val = round(n_total * 0.2)
-    n_train = n_total - n_val
+    n_train = len(glob(os.path.join(DATA_DIR, 'dataset', 'train', '*.jpg')))
+    n_val = len(glob(os.path.join(DATA_DIR, 'dataset', 'test', '*.jpg')))
+    print("Split:", n_train, n_val)
 
     steps_per_epoch = n_train // batch_size
     epochs = total_iterations // steps_per_epoch
