@@ -1,0 +1,6 @@
+__pycache__/
+logs/
+val2017/
+test2017/
+
+datasetColor/

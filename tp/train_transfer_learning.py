@@ -14,18 +14,18 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.keras as keras
 import tensorflow.keras.backend as K
-from tensorflow.keras.backend import set_session
-from tensorflow.keras.callbacks import (LearningRateScheduler, ModelCheckpoint,
+from keras.backend import set_session
+from keras.callbacks import (LearningRateScheduler, ModelCheckpoint,
                                         ReduceLROnPlateau, TensorBoard)
-from tensorflow.keras.layers import BatchNormalization
-from tensorflow.keras.layers import Convolution2D as Conv2D
-from tensorflow.keras.layers import (Dense, Dropout, Flatten, Input, Lambda,
-                                     MaxPooling2D, Reshape, concatenate)
-from tensorflow.keras.models import Model, Sequential
-from tensorflow.keras.optimizers import SGD, Adagrad, Adam
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from keras.layers import BatchNormalization
+from keras.layers import Conv2D, Conv1D, MaxPooling1D
+from keras.layers import (Dense, Dropout, Flatten, Input, Lambda,
+                                     MaxPooling2D, Reshape, concatenate, Concatenate)
+from keras.models import Model, Sequential
+from keras.optimizers import SGD, Adagrad, Adam
+from keras.preprocessing.image import ImageDataGenerator
+from keras.applications.mobilenet_v2 import MobileNetV2, preprocess_input
 
-import mobilenet_v2
 
 WIDTH, HEIGHT = 320, 240
 RHO = 32
@@ -33,15 +33,6 @@ PATCH_SIZE = 128
 # FIXME
 DATA_DIR = os.path.join('')
 
-## Session
-config = tf.compat.v1.ConfigProto()
-config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
-#config.log_device_placement = True  # to log device placement (on which device the operation ran)
-
-sess = tf.compat.v1.Session(config=config)
-
-set_session(
-    sess)  # set this TensorFlow session as the default session for Keras
 
 
 def preprocess_labels(y):
@@ -67,7 +58,7 @@ def build_data_generator(path, batch_size=64):
                 ys_batch = ys[i:end_i]
 
                 # Preprocess features and labels
-                xs_batch = mobilenet_v2.preprocess_input(xs_batch)
+                xs_batch = preprocess_input(xs_batch)
                 ys_batch = preprocess_labels(ys_batch)
 
                 yield [xs_batch[:, :, :, 0:3],
@@ -87,7 +78,7 @@ def mace(y_true, y_pred):
 
 
 def train(model, initial_epoch=None):
-    batch_size = 32
+    batch_size = 64
 
     iterations_per_stage = 50000
     stages = 4
@@ -142,7 +133,7 @@ def train(model, initial_epoch=None):
         epochs=epochs,
         validation_data=val_generator,
         validation_steps=(n_val // batch_size),
-        callbacks=[scheduler, checkpoint, tensorboard])
+        callbacks=[checkpoint, tensorboard])
 
 
 def homography_regression_model_transfer_learning():
@@ -151,41 +142,50 @@ def homography_regression_model_transfer_learning():
 
     ### ---------- mobilenet 1
     input_img1 = Input(shape=input_shape)
-    mobileNet1 = mobilenet_v2.MobileNetV2(input_shape=input_shape, \
-                    alpha=1.0, pooling='avg', include_top=False, weights="imagenet",layerNameSuffix="_1",\
+    mobileNet1 = MobileNetV2(input_shape=input_shape, \
+                    alpha=1.0, include_top=False, weights="imagenet", \
                     backend = tf.keras.backend, layers = tf.keras.layers, models = tf.keras.models, utils = tf.keras.utils)
-
-    out1 = Flatten()(mobileNet1.output)
+    #out1 = Flatten()(mobileNet1.output)
+    out1 = mobileNet1.output
     inp1 = mobileNet1.input
     modelMobileNet1 = Model(inp1, out1, name="mobileNet1")
     for layer in modelMobileNet1.layers:
-        layer.trainable = False
+        layer.name = layer.name + str("_1")
+        layer.trainable = True
 
     ### ---------- mobilenet 2
     input_img2 = Input(shape=input_shape)
-    mobileNet2 = mobilenet_v2.MobileNetV2(input_shape=input_shape, \
-                    alpha=1.0, pooling='avg', include_top=False, weights="imagenet",layerNameSuffix="_2",\
+    mobileNet2 = MobileNetV2(input_shape=input_shape, \
+                    alpha=1.0, include_top=False, weights="imagenet", \
                     backend = tf.keras.backend, layers = tf.keras.layers, models = tf.keras.models, utils = tf.keras.utils)
-    out2 = Flatten()(mobileNet2.output)
+    #out2 = Flatten()(mobileNet2.output)
+    out2 = mobileNet2.output
     inp2 = mobileNet2.input
     modelMobileNet2 = Model(inp2, out2, name="mobileNet2")
     for layer in modelMobileNet2.layers:
+        layer.name = layer.name + str("_2")
         layer.trainable = False
 
-    ### merge and reshape
-    merged = concatenate([out1, out2])
-    merged = Reshape((out1.shape[1], 2))(merged)
+    x = Concatenate(name='concatenate_1')([out1, out2])
+    x = [Conv2D(2, 4, name='conv2d_{}'.format(i))(x) for i in range(1, 5)]
+    x = Concatenate(name='concatenate_2')(x)
+    out = Flatten(name='flatten_1')(x)
 
-    ### we add dense layers + dropouts
-    x = Dense(1024, name='fc1', activation='relu')(merged)
-    x = Dropout(0.5)(x)
-    out = Dense(8, name='fc2', activation=None)(x)
+    #x = Dense(256, name='fc1', activation='relu')(x)
+    #x = Dropout(0.5)(x)
+    #out = Dense(8, name='fc2', activation=None)(x)
+
+    ### add dense layers + dropouts
+    #x = Flatten()(x)
+    #x = Dense(512, name='fc1', activation='relu')(x)
+    #x = Dropout(0.5)(x)
+    #out = Dense(8, name='fc2', activation=None)(x)
 
     model = Model(
         inputs=[modelMobileNet1.input, modelMobileNet2.input], outputs=[out])
 
     model.compile(
-        optimizer=SGD(lr=0.005, momentum=0.9),
+        optimizer=Adam(lr=0.001),
         loss=euclidean_l2_loss,
         metrics=['mse', mace])
 
@@ -194,6 +194,10 @@ def homography_regression_model_transfer_learning():
 
 if __name__ == "__main__":
     import sys
+
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    session = tf.Session(config=config)
 
     model = homography_regression_model_transfer_learning()
 

@@ -164,7 +164,7 @@ print(DATA_DIR)
 X = glob(os.path.join(DATA_DIR, 'test2017', '*.jpg'))
 print("Total", len(X))
 
-# Take a sample of 30000 images (we don't need too many images when doing transfer learning)
+# Take a sample of 10000 images (we don't need too many images when doing transfer learning)
 np.random.shuffle(X)
 X = X[:10000]
 
