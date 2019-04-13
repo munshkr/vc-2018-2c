@@ -1,0 +1,5 @@
+loss,mace,rho,dropout_batch_norm
+0.460949648161457,18.437979,40,with_dropout_batch_norm
+0.14388075921021096,2.8776152,20,with_dropout_batch_norm
+0.1861375274519398,5.9564004,32,with_dropout_batch_norm
+0.2201849633291976,7.045917,32,without_dropout_batch_norm
