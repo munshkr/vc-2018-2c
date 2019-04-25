@@ -21,8 +21,10 @@ from multiprocessing import Pool, cpu_count
 from datetime import datetime
 from tensorflow.keras.models import model_from_json
 from pdb import set_trace as st
+from numpy.linalg import inv
+import scipy.misc
 
-RHO = 40
+RHO = 20
 DATA_DIR = os.path.join('')
 
 
@@ -39,39 +41,39 @@ set_session(sess)  # set this TensorFlow session as the default session for Kera
 
 
 def preprocess_labels(y):
-    # Rescale
-    y = y / RHO
-    return y
+	# Rescale
+	y = y / RHO
+	return y
 
 
 def preprocess_features(x):
-    # Rescale and sample-wise centering
-    x = (x - 127.5) / 127.5
-    return x
+	# Rescale and sample-wise centering
+	x = (x - 127.5) / 127.5
+	return x
 
 def resize_images(x, w, h):
-    img1 = cv2.resize(x[:,:,0], (w, h))
-    img2 = cv2.resize(x[:,:,1], (w, h))    
-    return np.dstack([img1, img2])
+	img1 = cv2.resize(x[:,:,0], (w, h))
+	img2 = cv2.resize(x[:,:,1], (w, h))    
+	return np.dstack([img1, img2])
 
 def postprocess_labels(y):
-    return np.round(y * RHO).astype(np.int)
+	return np.round(y * RHO).astype(np.int)
 
 def grouper(iterable, n, fillvalue=None):
-    "Collect data into fixed-length chunks or blocks"
-    # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx"
-    args = [iter(iterable)] * n
-    return zip_longest(*args, fillvalue=fillvalue)
+	"Collect data into fixed-length chunks or blocks"
+	# grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx"
+	args = [iter(iterable)] * n
+	return zip_longest(*args, fillvalue=fillvalue)
 
 def predict_homographynet(model, X, batch_size=64):
-    h, w = model.input_shape[1:3]
-    y_pred = []
-    for batch in tqdm(list(grouper(X, batch_size))):
-        preproc_batch = np.array([resize_images(x, w, h) for x in batch if x is not None])
-        preproc_batch = preprocess_features(preproc_batch)
-        y_batch = model.predict(preproc_batch)
-        y_pred.extend(y_batch)
-    return postprocess_labels(np.array(y_pred))
+	h, w = model.input_shape[1:3]
+	y_pred = []
+	for batch in tqdm(list(grouper(X, batch_size))):
+		preproc_batch = np.array([resize_images(x, w, h) for x in batch if x is not None])
+		preproc_batch = preprocess_features(preproc_batch)
+		y_batch = model.predict(preproc_batch)
+		y_pred.extend(y_batch)
+	return postprocess_labels(np.array(y_pred))
 
 def euclidean_l2_loss(y_true, y_pred):
 	diff = K.reshape(y_true, (-1,4,2)) - K.reshape(y_pred, (-1,4,2))
@@ -140,15 +142,89 @@ def load_model(modelNameInput):
 	print("Loaded {} from disk".format(modelNameInput))
 	return loaded_model
 
+
+def aplicarH(H, img):
+    imgTransformada = np.zeros(img.shape)
+    #st()
+    for i in range(img.shape[1]):
+        for j in range(img.shape[0]):
+            punto = np.array([i,j,1])
+            punto = H @ punto
+            punto = punto/punto[2]
+            puntoX = int(punto[0])
+            puntoY = int(punto[1])
+
+            
+            if (puntoY < img.shape[0] and  puntoY>= 0) and (puntoX< img.shape[1] and puntoX>= 0):
+                imgTransformada[j, i] = img[puntoY,puntoX].astype(np.float32)
+
+
+    return imgTransformada
+
+def load_and_predict(model_name,directory):
+	model = load_model(model_name)
+
+	model.compile(optimizer=SGD(lr=0.005, momentum=0.9),
+			  loss=euclidean_l2_loss,
+			  metrics=['mse', mace])
+
+	# we load the patches saved as npz
+	evaluation_dir = os.path.join(DATA_DIR, directory)
+	test_generator = build_data_generator(evaluation_dir,64)
 	
+	while 1:
+		while 1:
+			print("Next image...")
+			# we get data
+			data = next(test_generator)
+			labels_batch = data[1]
+			inputs_batch = data[0]
+			img_orig = inputs_batch[0][...,0]
+			img_dest = inputs_batch[0][...,1]
+
+
+			# we get the first prediction and first labeled data.
+			y_pred = model.predict(data, batch_size = 1)[0]
+			y_true = tf.convert_to_tensor(labels_batch[0], np.float32)
+			mace_res = mace(y_true,y_pred).numpy()
+
+			# descomentar en caso que se busque alguna performance en particular
+			#if mace_res > 10:
+			#	break
+			break		
+
+		# we print the resulting MACE
+		print(' MACE ',mace_res)
+
+
+		height, width = img_orig.shape
+		x1 = np.array([[0, 0], [0, width-1], [height-1, width-1], [height-1, 0]], dtype=np.float32) 
+
+		# we find the Homography, apply it and save the predicted image along the real image
+		H, _ = cv2.findHomography(x1.reshape(4,2), x1.reshape(4,2)+y_pred.reshape(4,2))
+		img_dest_pred = cv2.warpPerspective(img_dest, inv(H), (img_dest.shape[1],img_dest.shape[0]))
+
+		scipy.misc.imsave('img_orig.jpg', img_orig)
+		scipy.misc.imsave('img_dest.jpg', img_dest)
+		scipy.misc.imsave('img_dest_pred.jpg', img_dest_pred)
+
+		print("Input 'c' to predict on a different image:")
+		st()
+
+
+		
+	
+
+	#dst = cv2.perspectiveTransform(x1.reshape(-1,1,2), inv(H))
+	x2 = dst[:, 0, :].astype(np.float32)
+	
+	diff = x1 - x2
+	res = np.clip(diff, -RHO, RHO)
+	
+	return np.round(res).reshape(-1)
+
+
 if __name__ == "__main__":
 	model_name = "train_exp14"
-
-	#test_gen()
-	#test_dice(ds_utrecht_smaller)
-	#train_and_save(model_name,dataset.ds_utrecht_held_out_augmentated_no_flip_no_discard)
-	load_and_evaluate(model_name,"hold_out_rho_40/",)
-	#load_and_evaluate(model_name,dataset.ds_singapore_smaller,"val")
-	
-	#load_and_predict(model_name, ds_utrecht)   
-	
+	#load_and_evaluate(model_name,"hold_out_rho_40/")
+	load_and_predict(model_name,"hold_out_rho_20/")
