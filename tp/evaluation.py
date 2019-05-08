@@ -204,9 +204,9 @@ def load_and_predict(model_name,directory):
 		H, _ = cv2.findHomography(x1.reshape(4,2), x1.reshape(4,2)+y_pred.reshape(4,2))
 		img_dest_pred = cv2.warpPerspective(img_dest, inv(H), (img_dest.shape[1],img_dest.shape[0]))
 
-		scipy.misc.imsave('img_orig.jpg', img_orig)
-		scipy.misc.imsave('img_dest.jpg', img_dest)
-		scipy.misc.imsave('img_dest_pred.jpg', img_dest_pred)
+		scipy.misc.imsave('img_orig.png', img_orig)
+		scipy.misc.imsave('img_dest.png', img_dest)
+		scipy.misc.imsave('img_dest_pred.png', img_dest_pred)
 
 		print("Input 'c' to predict on a different image:")
 		st()
@@ -225,6 +225,6 @@ def load_and_predict(model_name,directory):
 
 
 if __name__ == "__main__":
-	model_name = "train_exp14"
+	model_name = "train_exp12"
 	#load_and_evaluate(model_name,"hold_out_rho_40/")
-	load_and_predict(model_name,"hold_out_rho_20/")
+	load_and_predict(model_name,"dataset_hold_out/")
